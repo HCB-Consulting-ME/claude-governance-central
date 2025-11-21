@@ -18,5 +18,5 @@ EXPOSE 8300
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
   CMD wget --no-verbose --tries=1 --spider http://localhost:8300/health || exit 1
 
-# Start application
-CMD ["node", "src/index.js"]
+# Start application (V2)
+CMD ["node", "src/index-v2.js"]

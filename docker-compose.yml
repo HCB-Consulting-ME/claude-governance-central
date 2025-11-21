@@ -21,7 +21,7 @@ services:
       retries: 5
     restart: unless-stopped
 
-  # Backend API
+  # Backend API (V2)
   governance-api:
     build:
       context: ./backend
@@ -35,11 +35,20 @@ services:
       DB_NAME: governance
       DB_USER: governance_app
       DB_PASSWORD: ${DB_PASSWORD:-changeme123}
+      # ArangoDB connection (connects to host machine)
+      ARANGO_URL: ${ARANGO_URL:-http://host.docker.internal:8529}
+      ARANGO_DATABASE: ${ARANGO_DATABASE:-flowmaster}
+      ARANGO_USER: ${ARANGO_USER:-root}
+      ARANGO_PASSWORD: ${ARANGO_PASSWORD:-flowmaster25!}
+      # JWT Secret
+      JWT_SECRET: ${JWT_SECRET:-change-this-in-production-please}
     ports:
       - "8300:8300"
     depends_on:
       governance-db:
         condition: service_healthy
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8300/health"]
       interval: 30s
