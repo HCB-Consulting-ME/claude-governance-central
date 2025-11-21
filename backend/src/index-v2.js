@@ -434,6 +434,150 @@ app.put('/api/hooks/:id', authMiddleware, async (req, res) => {
 });
 
 // ==================================
+// V3: PROJECTS & ENVIRONMENTS
+// ==================================
+
+// List projects for user's team
+app.get('/api/projects', authMiddleware, async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT p.*, t.name as team_name
+       FROM projects p
+       LEFT JOIN teams t ON p.team_id = t.id
+       WHERE p.team_id = $1
+       ORDER BY p.created_at DESC`,
+      [req.user.team_id]
+    );
+
+    res.json({ projects: result.rows, count: result.rows.length });
+  } catch (error) {
+    console.error('Projects list error:', error);
+    res.status(500).json({ error: 'Failed to fetch projects' });
+  }
+});
+
+// Create new project
+app.post('/api/projects', authMiddleware, requireRole('admin'), async (req, res) => {
+  try {
+    const { name, description, repo_url, repo_provider, default_branch, settings } = req.body;
+
+    if (!name) {
+      return res.status(400).json({ error: 'Project name required' });
+    }
+
+    const result = await pool.query(
+      `INSERT INTO projects (name, description, repo_url, repo_provider, team_id, default_branch, settings)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       RETURNING *`,
+      [name, description, repo_url, repo_provider, req.user.team_id, default_branch || 'main', settings || {}]
+    );
+
+    res.status(201).json({ project: result.rows[0] });
+  } catch (error) {
+    console.error('Project creation error:', error);
+    res.status(500).json({ error: 'Failed to create project' });
+  }
+});
+
+// Get project details
+app.get('/api/projects/:id', authMiddleware, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const result = await pool.query(
+      `SELECT p.*, t.name as team_name
+       FROM projects p
+       LEFT JOIN teams t ON p.team_id = t.id
+       WHERE p.id = $1 AND p.team_id = $2`,
+      [id, req.user.team_id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Project not found' });
+    }
+
+    res.json({ project: result.rows[0] });
+  } catch (error) {
+    console.error('Project details error:', error);
+    res.status(500).json({ error: 'Failed to fetch project details' });
+  }
+});
+
+// List environments for a project
+app.get('/api/projects/:id/environments', authMiddleware, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Verify project access
+    const projectCheck = await pool.query(
+      'SELECT id FROM projects WHERE id = $1 AND team_id = $2',
+      [id, req.user.team_id]
+    );
+
+    if (projectCheck.rows.length === 0) {
+      return res.status(404).json({ error: 'Project not found' });
+    }
+
+    const result = await pool.query(
+      `SELECT e.*, u.username
+       FROM environments e
+       LEFT JOIN users u ON e.user_id = u.id
+       WHERE e.project_id = $1
+       ORDER BY
+         CASE e.type
+           WHEN 'production' THEN 1
+           WHEN 'shared' THEN 2
+           WHEN 'local' THEN 3
+         END,
+         e.name`,
+      [id]
+    );
+
+    res.json({ environments: result.rows, count: result.rows.length });
+  } catch (error) {
+    console.error('Environments list error:', error);
+    res.status(500).json({ error: 'Failed to fetch environments' });
+  }
+});
+
+// Create environment for a project
+app.post('/api/projects/:id/environments', authMiddleware, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, type, hostname, settings } = req.body;
+
+    if (!name || !type) {
+      return res.status(400).json({ error: 'Environment name and type required' });
+    }
+
+    // Verify project access
+    const projectCheck = await pool.query(
+      'SELECT id FROM projects WHERE id = $1 AND team_id = $2',
+      [id, req.user.team_id]
+    );
+
+    if (projectCheck.rows.length === 0) {
+      return res.status(404).json({ error: 'Project not found' });
+    }
+
+    // For local environments, set user_id
+    const user_id = type === 'local' ? req.user.id : null;
+
+    const result = await pool.query(
+      `INSERT INTO environments (project_id, name, type, hostname, user_id, settings)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       RETURNING *`,
+      [id, name, type, hostname, user_id, settings || {}]
+    );
+
+    res.status(201).json({ environment: result.rows[0] });
+  } catch (error) {
+    console.error('Environment creation error:', error);
+    res.status(500).json({ error: 'Failed to create environment' });
+  }
+});
+
+// ==================================
 // EVIDENCE (Enhanced with context)
 // ==================================
 
@@ -516,7 +660,13 @@ app.post('/api/evidence', authMiddleware, async (req, res) => {
       conversation_id,
       knowledge_pattern_id,
       coding_standard_id,
-      visibility = 'team'
+      visibility = 'team',
+      // V3 fields
+      project_id,
+      environment_id,
+      repo_branch,
+      commit_sha,
+      git_remote
     } = req.body;
 
     if (!task_category || !evidence_type || !evidence_data) {
@@ -527,8 +677,9 @@ app.post('/api/evidence', authMiddleware, async (req, res) => {
       `INSERT INTO evidence_repository_v2
        (user_id, team_id, task_category, evidence_type, evidence_data,
         prompt_text, completion_text, conversation_id,
-        knowledge_pattern_id, coding_standard_id, visibility)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+        knowledge_pattern_id, coding_standard_id, visibility,
+        project_id, environment_id, repo_branch, commit_sha, git_remote)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
        RETURNING *`,
       [
         req.user.id,
@@ -541,7 +692,12 @@ app.post('/api/evidence', authMiddleware, async (req, res) => {
         conversation_id,
         knowledge_pattern_id,
         coding_standard_id,
-        visibility
+        visibility,
+        project_id,
+        environment_id,
+        repo_branch,
+        commit_sha,
+        git_remote
       ]
     );
 

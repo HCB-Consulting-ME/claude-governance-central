@@ -3,6 +3,9 @@ FROM nginx:alpine
 # Copy static HTML
 COPY src/index.html /usr/share/nginx/html/index.html
 
+# Fix permissions for nginx user
+RUN chmod 644 /usr/share/nginx/html/index.html
+
 # Copy nginx configuration
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
