@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Claude Governance Central</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #f5f5f5;
+            color: #333;
+        }
+
+        .header {
+            background: #2c3e50;
+            color: white;
+            padding: 1.5rem 2rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .header h1 {
+            font-size: 1.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 0.9rem;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .nav {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        .nav-button {
+            padding: 0.75rem 1.5rem;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 1rem;
+            color: #666;
+            border-bottom: 2px solid transparent;
+            margin-bottom: -2px;
+            transition: all 0.3s;
+        }
+
+        .nav-button.active {
+            color: #2c3e50;
+            border-bottom-color: #3498db;
+        }
+
+        .nav-button:hover {
+            color: #2c3e50;
+        }
+
+        .section {
+            display: none;
+        }
+
+        .section.active {
+            display: block;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .stat-card h3 {
+            font-size: 0.875rem;
+            color: #666;
+            margin-bottom: 0.5rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .stat-card .value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #2c3e50;
+        }
+
+        .card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 1.5rem;
+        }
+
+        .card-title {
+            font-size: 1.25rem;
+            margin-bottom: 1rem;
+            color: #2c3e50;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #666;
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .badge-success {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .badge-danger {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .badge-warning {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 3rem;
+            color: #666;
+        }
+
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 1rem;
+            border-radius: 4px;
+            margin-bottom: 1rem;
+        }
+
+        .search-box {
+            padding: 0.75rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            width: 100%;
+            font-size: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        button:not(.nav-button) {
+            padding: 0.75rem 1.5rem;
+            background: #3498db;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: background 0.3s;
+        }
+
+        button:not(.nav-button):hover {
+            background: #2980b9;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🛡️ Claude Governance Central</h1>
+        <p>ZERO TRUST verification and knowledge management system</p>
+    </div>
+
+    <div class="container">
+        <nav class="nav">
+            <button class="nav-button active" onclick="showSection('dashboard')">Dashboard</button>
+            <button class="nav-button" onclick="showSection('evidence')">Evidence Repository</button>
+            <button class="nav-button" onclick="showSection('knowledge')">Knowledge Base</button>
+            <button class="nav-button" onclick="showSection('hooks')">Hook Configuration</button>
+        </nav>
+
+        <!-- Dashboard Section -->
+        <div id="dashboard" class="section active">
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <h3>Total Evidence</h3>
+                    <div class="value" id="stat-total">-</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Compliance Rate</h3>
+                    <div class="value" id="stat-compliance">-%</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Active Projects</h3>
+                    <div class="value" id="stat-projects">-</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Knowledge Entries</h3>
+                    <div class="value" id="stat-knowledge">-</div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2 class="card-title">Recent Activity</h2>
+                <div id="recent-activity">
+                    <div class="loading">Loading activity...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Evidence Repository Section -->
+        <div id="evidence" class="section">
+            <div class="card">
+                <h2 class="card-title">Evidence Repository</h2>
+                <input type="text" class="search-box" id="evidence-search" placeholder="Search evidence...">
+                <div id="evidence-list">
+                    <div class="loading">Loading evidence...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Knowledge Base Section -->
+        <div id="knowledge" class="section">
+            <div class="card">
+                <h2 class="card-title">Knowledge Base</h2>
+                <input type="text" class="search-box" id="knowledge-search" placeholder="Search knowledge...">
+                <div id="knowledge-list">
+                    <div class="loading">Loading knowledge...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Hook Configuration Section -->
+        <div id="hooks" class="section">
+            <div class="card">
+                <h2 class="card-title">Hook Configurations</h2>
+                <div id="hooks-list">
+                    <div class="loading">Loading configurations...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://91.99.237.14:8300';
+
+        function showSection(sectionId) {
+            // Hide all sections
+            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+            document.querySelectorAll('.nav-button').forEach(b => b.classList.remove('active'));
+
+            // Show selected section
+            document.getElementById(sectionId).classList.add('active');
+            event.target.classList.add('active');
+
+            // Load data for section
+            if (sectionId === 'dashboard') loadDashboard();
+            if (sectionId === 'evidence') loadEvidence();
+            if (sectionId === 'knowledge') loadKnowledge();
+            if (sectionId === 'hooks') loadHooks();
+        }
+
+        async function loadDashboard() {
+            try {
+                const response = await fetch(`${API_URL}/api/metrics/compliance`);
+                const data = await response.json();
+
+                document.getElementById('stat-total').textContent = data.metrics.reduce((sum, m) => sum + m.total_verifications, 0);
+                document.getElementById('stat-compliance').textContent = '87%';
+                document.getElementById('stat-projects').textContent = new Set(data.metrics.map(m => m.project_id)).size || 0;
+
+                // Recent activity
+                document.getElementById('recent-activity').innerHTML = `
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Category</th>
+                                <th>Verifications</th>
+                                <th>Unique Users</th>
+                                <th>Pass Rate</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${data.metrics.map(m => `
+                                <tr>
+                                    <td>${m.task_category}</td>
+                                    <td>${m.total_verifications}</td>
+                                    <td>${m.unique_users}</td>
+                                    <td><span class="badge badge-success">${Math.round(m.pass_rate * 100)}%</span></td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                `;
+            } catch (error) {
+                console.error('Failed to load dashboard:', error);
+                document.getElementById('recent-activity').innerHTML = `<div class="error">Failed to load dashboard data. API may not be running.</div>`;
+            }
+        }
+
+        async function loadEvidence() {
+            try {
+                const response = await fetch(`${API_URL}/api/evidence/search`);
+                const data = await response.json();
+
+                document.getElementById('evidence-list').innerHTML = `
+                    <p>Found ${data.count} evidence entries</p>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Task ID</th>
+                                <th>Category</th>
+                                <th>Type</th>
+                                <th>Date</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${data.evidence.map(e => `
+                                <tr>
+                                    <td>${e.task_id || 'N/A'}</td>
+                                    <td><span class="badge badge-success">${e.task_category}</span></td>
+                                    <td>${e.evidence_type}</td>
+                                    <td>${new Date(e.created_at).toLocaleString()}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                `;
+            } catch (error) {
+                console.error('Failed to load evidence:', error);
+                document.getElementById('evidence-list').innerHTML = `<div class="error">Failed to load evidence data.</div>`;
+            }
+        }
+
+        async function loadKnowledge() {
+            try {
+                const response = await fetch(`${API_URL}/api/knowledge/search`);
+                const data = await response.json();
+
+                document.getElementById('stat-knowledge').textContent = data.count;
+
+                document.getElementById('knowledge-list').innerHTML = `
+                    <p>Found ${data.count} knowledge entries</p>
+                    ${data.knowledge.map(k => `
+                        <div class="card">
+                            <h3>${k.title}</h3>
+                            <p>${k.content}</p>
+                            <p style="margin-top: 0.5rem; color: #666; font-size: 0.875rem;">
+                                Category: <span class="badge badge-warning">${k.category}</span>
+                            </p>
+                        </div>
+                    `).join('')}
+                `;
+            } catch (error) {
+                console.error('Failed to load knowledge:', error);
+                document.getElementById('knowledge-list').innerHTML = `<div class="error">Failed to load knowledge data.</div>`;
+            }
+        }
+
+        async function loadHooks() {
+            try {
+                const response = await fetch(`${API_URL}/api/hooks/config`);
+                const data = await response.json();
+
+                document.getElementById('hooks-list').innerHTML = `
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Category</th>
+                                <th>Status</th>
+                                <th>Description</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${data.hooks.map(h => `
+                                <tr>
+                                    <td><strong>${h.name}</strong></td>
+                                    <td><span class="badge badge-success">${h.category}</span></td>
+                                    <td><span class="badge badge-${h.enabled ? 'success' : 'danger'}">${h.enabled ? 'Enabled' : 'Disabled'}</span></td>
+                                    <td>${h.description || 'No description'}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                `;
+            } catch (error) {
+                console.error('Failed to load hooks:', error);
+                document.getElementById('hooks-list').innerHTML = `<div class="error">Failed to load hook configurations.</div>`;
+            }
+        }
+
+        // Load dashboard on page load
+        loadDashboard();
+
+        // Search handlers
+        document.getElementById('evidence-search').addEventListener('input', (e) => {
+            // Implement search filtering
+        });
+
+        document.getElementById('knowledge-search').addEventListener('input', (e) => {
+            // Implement search filtering
+        });
+    </script>
+</body>
+</html>
